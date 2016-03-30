@@ -443,7 +443,8 @@ sub doSSL {
          my $err2 = Net::SSLeay::get_error($self->{ssl}, $err);
          unless ($err2 == Net::SSLeay::ERROR_WANT_READ()) {
             my $tmp = "POE::Filter::SSL: ".($self->{client} ? "connect" : "accept").": ";
-            if (my $err3 = Net::SSLeay::ERR_get_error()) {
+            my $err3 = undef;
+            if ($err3 = Net::SSLeay::ERR_get_error()) {
                $tmp .= Net::SSLeay::ERR_error_string($err3)."(".$err3.", ".$err2.")";
             } else {
                $tmp .= "No error (return=".$err2.")";
