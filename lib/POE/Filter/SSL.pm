@@ -4,7 +4,7 @@ use strict;
 use Net::SSLeay;
 use POE qw (Filter::HTTPD Filter::Stackable Wheel::ReadWrite);
 use Scalar::Util qw(blessed);
-use Carp qw(carp);
+use Carp qw(carp confess);
 use POE;
 
 use vars qw($VERSION @ISA);
@@ -217,6 +217,7 @@ sub new {
    $self->{debug} = $params->{debug} || 0;
    $self->{cacrl} = $params->{cacrl} || undef;
    $self->{client} = $params->{client} || 0;
+   $self->{errorhandler} = $params->{errorhandler};
    $self->{params} = $params;
 
    $self->{context} = Net::SSLeay::CTX_new();
@@ -423,13 +424,38 @@ sub doSSL {
          $self->{accepted}++;
          $ret++;
       } else {
+         my $errtext = $!;
          my $err2 = Net::SSLeay::get_error($self->{ssl}, $err);
          unless ($err2 == Net::SSLeay::ERROR_WANT_READ()) {
-            carp("POE::Filter::SSL: UNEXPECTED ERROR: ERR1:".$err." ERR2:".$err2.($self->{client} ? '' : " HINT: ".
-                "Check if you have configured a CRT and KEY file, and that ".
-                "both are readable")); # unless ($err2 == 5); # SSL_ERROR_SYSCALL
-            $ret++ unless $self->{accepted}++;
-            return $ret;
+            my $tmp = "POE::Filter::SSL: ".($self->{client} ? "connect" : "accept").": ";
+            if (my $err3 = Net::SSLeay::ERR_get_error()) {
+               $tmp .= Net::SSLeay::ERR_error_string($err3)."(".$err3.", ".$err2.")";
+            } else {
+               $tmp .= "No error (return=".$err2.")";
+            }
+            if (defined($self->{errorhandler})) {
+               if (ref($self->{errorhandler}) eq "CODE") {
+                  $self->{errorhandler}($self, {
+                     ssl       => $self->{ssl},
+                     msg       => $tmp,
+                     ret       => $err,
+                     get_error => $err2,
+                     error     => $err3,
+                  });
+               } elsif(lc($self->{errorhandler}) eq "ignore") {
+               } elsif(lc($self->{errorhandler}) eq "carp") {
+                  carp($tmp);
+               } elsif(lc($self->{errorhandler}) eq "confess") {
+                  confess($tmp);
+               } elsif(lc($self->{errorhandler}) eq "carponetime") {
+                  carp($tmp)
+                     unless $self->{errorstat}->{$err||"-"}->{$err2||"-"}->{$err3||"-"}++;
+               }
+            } else {
+               carp($tmp);
+            }
+            $ret++
+               unless $self->{accepted}++;
          }
       }
    }
@@ -1040,6 +1066,44 @@ See the I<HTTPS-Server>, I<SSL on an established connection> and I<Client certif
 Returns I<true> if there is a client certificate, that might be untrusted.
 
 B<WARNING:> If the client provides an untrusted client certficate a client certicate that is listed in CRL, this function returns I<true>. You have to ask I<clientCertValid()> if the certicate is valid!
+
+=item errorhandler
+
+By default, every ssl error is escalated via carp. You may change this behaviour via this option to:
+
+=over 2
+
+=item "ignore"
+
+Do not report any error.
+
+=item I<CODE>
+
+Setting errorhandler to a reference of a function allows to be called it callback function with the following options:
+
+ARG1: POE:SSL::Filter instance
+
+ARG2: Ref on a Hash with the following keys:
+
+  ret        The return code of Net::SSLeay::connect (client) or Net::SSLeay::accept (server)
+  ssl        The SSL context (SSL_CTX)
+  msg        The error message as text, as normaly reported via carp
+  get_error  The error code of get_error the ssl context
+  error      The error code of get_error without context
+
+=item "carp" (or undef)
+
+Do Carp/carp on error.
+
+=item "confess"
+
+Do Carp/confess (stacktrace) on error.
+
+=item "carponetime"
+
+Report carp for one occurence only one time - over all!
+
+=back
 
 =item debug
 
