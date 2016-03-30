@@ -102,3 +102,10 @@ Revision history for POE-Filter-SSL
 0.28	07.03.2014
 	Fixed major security error verifying client certifcates in clientCertValid()
 
+0.29	30.03.2016
+	Fixed fix spelling erros in manpage (#106512)
+	Fixed (D)DoS issues with malicious clients sending random data (#100602): New option errorhandler
+	Fixed fix pod in SSL.pm (#106511)
+	SSL_OP_CIPHER_SERVER_PREFERENCE by default
+	dhcertmem: Pass dhcertparam via scalar
+
