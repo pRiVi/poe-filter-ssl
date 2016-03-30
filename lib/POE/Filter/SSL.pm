@@ -570,7 +570,7 @@ Version 0.29
 
 =head1 DESCRIPTION
 
-This module allows to secure connections of I<POE::Wheel::ReadWrite> with OpenSSL by a
+This module allows one to secure connections of I<POE::Wheel::ReadWrite> with OpenSSL by a
 I<POE::Filter> object, and behaves (beside of SSLing) as I<POE::Filter::Stream>.
 
 I<POE::Filter::SSL> can be added, switched and removed during runtime, for example if you
@@ -594,7 +594,7 @@ Server and client mode
 
 Optional client certificate verification
 
-Allows to accept connections with invalid or missing client certificate and return custom error data
+Allows one to accept connections with invalid or missing client certificate and return custom error data
 
 CRL check of client certificates
 
@@ -714,8 +714,9 @@ By default I<POE::Filter::SSL> acts as a SSL server. To use it in client mode yo
 =item Advanced Example
 
 This example is an IMAP-Relay which forwards the connections to a IMAP server
-by username. It allows the uncrypted transfer on port 143, with the option
-of SSL on the established connection (STARTTLS). On port 993 it allows to do direct SSL.
+by username. It allows one the uncrypted transfer on port 143, with the option
+of SSL on the established connection (STARTTLS). On port 993 it allows one to do
+direct SSL.
 
 Tested with Thunderbird version 3.0.5.
 
@@ -1080,7 +1081,7 @@ also tests against the CRL, if you have the I<cacrl> option set on I<new()>.
 
 B<WARNING:> POE::Filter:SSL now is able to do the ssh handshake now without any helpers. Because of this, this function has been removed!
 
-Allows to add filters after the ssl handshake. It has to be called in the input handler, and needs the passing of the I<POE::Wheel::ReadWhile> object. If it returns false, you have to return from the input handler.
+Allows one to add filters after the ssl handshake. It has to be called in the input handler, and needs the passing of the I<POE::Wheel::ReadWhile> object. If it returns false, you have to return from the input handler.
 
 See the I<HTTPS-Server>, I<SSL on an established connection> and I<Client certificate verification> examples in I<SYNOPSIS>
 
