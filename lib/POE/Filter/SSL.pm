@@ -248,14 +248,25 @@ sub new {
    $self->{ssl} = Net::SSLeay::new($self->{context});
    Net::SSLeay::set_bio($self->{ssl}, $self->{rbio}, $self->{wbio});
 
-   if ($params->{dhcert}) {
-      my $dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r");
-      die "Cannot open dhcert file!" unless $dhbio;
+   if ($params->{dhcert} ||
+       $params->{dhcertmem}) {
+      my $dhbio = undef;
+      if ($params->{dhcertmem}) {
+         $dhbio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
+         my $sent = Net::SSLeay::BIO_write($dhbio, $params->{dhcert});
+         die "Cannot write to dhcert bio!"
+            if (($sent) != length($params->{dhcert}));
+      } else {
+         die "Cannot open dhcert file!"
+            unless (-f $params->{dhcert} && ($dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r")));
+      }
       my $dhret = Net::SSLeay::PEM_read_bio_DHparams($dhbio);
       Net::SSLeay::BIO_free($dhbio);
-      die "Couldn't set DH parameters!" if (Net::SSLeay::set_tmp_dh($self->{ssl}, $dhret) < 0);
+      die "Couldn't set DH parameters!"
+         if (Net::SSLeay::set_tmp_dh($self->{ssl}, $dhret) < 0);
       my $rsa = Net::SSLeay::RSA_generate_key(2048, 73);
-      die "Couldn't set RSA key!" if (!Net::SSLeay::CTX_set_tmp_rsa($self->{context}, $rsa));
+      die "Couldn't set RSA key!"
+         if (!Net::SSLeay::CTX_set_tmp_rsa($self->{context}, $rsa));
       Net::SSLeay::RSA_free($rsa);
    }
 
@@ -985,11 +996,13 @@ In this case, you normaly have no I<key> and I<crt> option.
 
 Configures a CRL (ca.crl) against the client certificate is verified by I<clientCertValid()>.
 
-=item dhcert
+=item dhcert{mem}
 
 If you want to enable perfect forward secrecy, here you can enable Diffie-Hellman. You just have to create a dhparam file and there here the path to the path/to/FILENAME.pem where your Diffie-Hellman (pem format) stays.
 
 openssl dhparam -check -text -5 2048 -out path/to/FILENAME.pem
+
+You are able to pass the already inmemory dhparam file as scalar(string) via I<dhcertmem>.
 
 =item clientcert
 
