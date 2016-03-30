@@ -2,12 +2,12 @@ NAME
     POE::Filter::SSL - The easiest and flexiblest way to SSL in POE!
 
 VERSION
-    Version 0.28
+    Version 0.29
 
 DESCRIPTION
-    This module allows to secure connections of *POE::Wheel::ReadWrite* with
-    OpenSSL by a *POE::Filter* object, and behaves (beside of SSLing) as
-    *POE::Filter::Stream*.
+    This module allows one to secure connections of *POE::Wheel::ReadWrite*
+    with OpenSSL by a *POE::Filter* object, and behaves (beside of SSLing)
+    as *POE::Filter::Stream*.
 
     *POE::Filter::SSL* can be added, switched and removed during runtime,
     for example if you want to initiate SSL (see the *SSL on an established
@@ -29,7 +29,7 @@ DESCRIPTION
 
           Optional client certificate verification
 
-          Allows to accept connections with invalid or missing client
+          Allows one to accept connections with invalid or missing client
           certificate and return custom error data
 
           CRL check of client certificates
@@ -129,9 +129,9 @@ SYNOPSIS
   SSL on an established connection
     Advanced Example
       This example is an IMAP-Relay which forwards the connections to a IMAP
-      server by username. It allows the uncrypted transfer on port 143, with
-      the option of SSL on the established connection (STARTTLS). On port
-      993 it allows to do direct SSL.
+      server by username. It allows one the uncrypted transfer on port 143,
+      with the option of SSL on the established connection (STARTTLS). On
+      port 993 it allows one to do direct SSL.
 
       Tested with Thunderbird version 3.0.5.
 
@@ -401,13 +401,16 @@ FUNCTIONS
           Configures a CRL (ca.crl) against the client certificate is
           verified by *clientCertValid()*.
 
-        dhcert
+        dhcert{mem}
           If you want to enable perfect forward secrecy, here you can enable
           Diffie-Hellman. You just have to create a dhparam file and there
           here the path to the path/to/FILENAME.pem where your
           Diffie-Hellman (pem format) stays.
 
           openssl dhparam -check -text -5 2048 -out path/to/FILENAME.pem
+
+          You are able to pass the already inmemory dhparam file as
+          scalar(string) via *dhcertmem*.
 
         clientcert
           Only in server mode: Request during ssl handshake from the client
@@ -416,6 +419,14 @@ FUNCTIONS
           WARNING: If the client provides an untrusted or no client
           certficate, the connection is not failing. You have to ask
           *clientCertValid()* if the certicate is valid!
+
+        nohonor
+          By default, as server, *POE::Filter:SSL* sets the option
+          *SSL_OP_CIPHER_SERVER_PREFERENCE*. For more information you may
+          google the pendant of apache *SSLHonorCipherOrder*.
+
+          To flip back to the old behaviour, not setting this option, you
+          can set nohonor.
 
         cipher
           Specify which ciphers are allowed for the synchronous encrypted
@@ -486,8 +497,8 @@ FUNCTIONS
         without any helpers. Because of this, this function has been
         removed!
 
-        Allows to add filters after the ssl handshake. It has to be called
-        in the input handler, and needs the passing of the
+        Allows one to add filters after the ssl handshake. It has to be
+        called in the input handler, and needs the passing of the
         *POE::Wheel::ReadWhile* object. If it returns false, you have to
         return from the input handler.
 
@@ -502,6 +513,36 @@ FUNCTIONS
         client certicate that is listed in CRL, this function returns
         *true*. You have to ask *clientCertValid()* if the certicate is
         valid!
+
+    errorhandler
+        By default, every ssl error is escalated via carp. You may change
+        this behaviour via this option to:
+
+        "ignore"
+          Do not report any error.
+
+        *CODE*
+          Setting errorhandler to a reference of a function allows to be
+          called it callback function with the following options:
+
+          ARG1: POE:SSL::Filter instance
+
+          ARG2: Ref on a Hash with the following keys:
+
+            ret        The return code of Net::SSLeay::connect (client) or Net::SSLeay::accept (server)
+            ssl        The SSL context (SSL_CTX)
+            msg        The error message as text, as normaly reported via carp
+            get_error  The error code of get_error the ssl context
+            error      The error code of get_error without context
+
+        "carp" (or undef)
+          Do Carp/carp on error.
+
+        "confess"
+          Do Carp/confess (stacktrace) on error.
+
+        "carponetime"
+          Report carp for one occurence only one time - over all!
 
     debug
         Shows debug messages of *clientCertNotOnCRL()*.
