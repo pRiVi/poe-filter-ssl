@@ -222,6 +222,10 @@ sub new {
 
    $self->{context} = Net::SSLeay::CTX_new();
 
+   if ((!$self->{client}) && (!$params->{"nohonor"})) { # Beim Apache: SSLHonorCipherOrder
+      Net::SSLeay::CTX_set_options($self->{context}, 0x00400000); # SSL_OP_CIPHER_SERVER_PREFERENCE
+   }
+
    Net::SSLeay::CTX_use_RSAPrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
    Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
    if ($params->{chain}) {
@@ -992,6 +996,12 @@ openssl dhparam -check -text -5 2048 -out path/to/FILENAME.pem
 Only in server mode: Request during ssl handshake from the client a client certificat.
 
 B<WARNING:> If the client provides an untrusted or no client certficate, the connection is B<not> failing. You have to ask I<clientCertValid()> if the certicate is valid!
+
+=item nohonor
+
+By default, as server, I<POE::Filter:SSL> sets the option I<SSL_OP_CIPHER_SERVER_PREFERENCE>. For more information you may google the pendant of apache I<SSLHonorCipherOrder>.
+
+To flip back to the old behaviour, not setting this option, you can set nohonor.
 
 =item cipher
 
