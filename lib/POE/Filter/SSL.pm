@@ -1218,11 +1218,13 @@ L<http://search.cpan.org/dist/POE-Filter-SSL>
 
 =head1 Commercial support
 
-Commercial support can be gained at <sslsupport at priv.de>
+Commercial support can be gained at <sslsupport at priv.de>.
+
+Used in our products, you can find on L<https://www.cryptomagic.eu/>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2010-2014 Markus Schraeder, all rights reserved.
+Copyright 2010-2016 Markus Schraeder, CryptoMagic GmbH, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
