@@ -109,3 +109,6 @@ Revision history for POE-Filter-SSL
 	SSL_OP_CIPHER_SERVER_PREFERENCE by default
 	dhcertmem: Pass dhcertparam via scalar
 
+0.30	08.04.2016
+	Fixed bug passing dhparamem
+
