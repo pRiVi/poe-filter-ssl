@@ -253,9 +253,9 @@ sub new {
       my $dhbio = undef;
       if ($params->{dhcertmem}) {
          $dhbio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
-         my $sent = Net::SSLeay::BIO_write($dhbio, $params->{dhcert});
+         my $sent = Net::SSLeay::BIO_write($dhbio, $params->{dhcertmem});
          die "Cannot write to dhcert bio!"
-            if (($sent) != length($params->{dhcert}));
+            if (($sent) != length($params->{dhcertmem}));
       } else {
          die "Cannot open dhcert file!"
             unless (-f $params->{dhcert} && ($dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r")));
