@@ -279,7 +279,7 @@ sub new {
    } else {
       if ($params->{keymem}) {
          # TODO:XXX:FIXME: Warum nicht CTX_use_PrivateKey_file?
-         Net::SSLeay::CTX_use_RSAPrivateKey($self->{context}, PEMdataToRSA($params->{$params->{keymem}));
+         Net::SSLeay::CTX_use_RSAPrivateKey($self->{context}, PEMdataToRSA($params->{$params->{keymem}}));
       } else {
          # TODO:XXX:FIXME: Warum nicht CTX_use_PrivateKey_file?
          Net::SSLeay::CTX_use_RSAPrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
@@ -295,10 +295,6 @@ sub new {
    if ($params->{cacrt}||
        $params->{cacrtmem}) {
       if ($params->{cacrtmem}) {
-         # TODO:XXX:FIXME: Errorchecking!
-         Net::SSLeay::CTX_load_verify_locations($self->{context}, undef);
-         # TODO:XXX:FIXME: Errorchecking!
-         Net::SSLeay::CTX_set_client_CA_list($self->{context}, undef);
          if (ref($params->{cacrtmem}) eq "ARRAY") {
             foreach my $curcert (@{$params->{cacrtmem}}) {
                CTX_add_client_CA($self->{context}, $curcert);
