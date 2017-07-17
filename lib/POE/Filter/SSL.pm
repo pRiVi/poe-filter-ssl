@@ -209,6 +209,38 @@ sub checkForDoSendback {
    return 0;
 }
 
+sub PEMdataToX509 {
+   my $ctx = shift;
+   my $bio = dataToBio($crt);
+   my $x509 = PEM_read_bio_X509($bio);
+   Net::SSLeay::BIO_free($bio);
+   return $x509;
+}
+
+sub PEMdataToRSA {
+   my $ctx = shift;
+   my $bio = dataToBio($crt);
+   # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
+   my $rsa = PEM_read_bio_RSAPrivateKey($bio);
+   Net::SSLeay::BIO_free($bio);
+   return $rsa;
+}
+
+sub PEMdataToEVP_PKEY {
+   my $ctx = shift;
+   my $bio = dataToBio($crt);
+   # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
+   my $evp_pkey = PEM_read_bio_PrivateKey($bio);
+   Net::SSLeay::BIO_free($bio);
+   return $evp_pkey;
+}
+
+sub CTX_add_client_CA {
+   my $ctx = shift;
+   my $x509 = shift;
+   Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($x509));
+}
+
 sub new {
    my $type = shift;
    my $params = {@_};
@@ -1154,6 +1186,12 @@ Example:
 =item VERIFY()
 
 =item X509_get_serialNumber()
+
+=item PEM_read_bio_PrivateKey()
+
+=item PEM_read_bio_RSAPrivateKey()
+
+=item PEM_read_bio_X509()
 
 =item clone()
 
