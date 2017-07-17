@@ -249,7 +249,7 @@ sub dataToBio {
    my $data = shift;
    # TODO:XXX:FIXME: Errorchecking!
    my $bio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
-   my $sent = Net::SSLeay::BIO_write($dhbio, $data);
+   my $sent = Net::SSLeay::BIO_write($bio, $data);
    die "Cannot write to dhcert bio!"
       if (($sent) != length($data));
   return $bio;
