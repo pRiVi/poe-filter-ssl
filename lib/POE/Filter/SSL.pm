@@ -417,44 +417,6 @@ sub writeToSSLBIO {
    $self->doSSL() unless $nodoSSL;
 }
 
-#sub doHandshake {
-#   my $readWrite = shift;
-#   $readWrite = shift if (ref($readWrite) eq "POE::Filter::SSL");
-#   my @newFilters = @_;
-#   if (@newFilters) {
-#      if (ref($readWrite->get_input_filter()) eq "POE::Filter::SSL") {
-#         #print "ClientInput: ".$request."\n";
-#         if ($readWrite->get_input_filter()->handshakeDone(ignorebuf => 1)) {
-#            $readWrite->set_input_filter(POE::Filter::Stackable->new(
-#               Filters => [
-#                  $readWrite->get_input_filter(),
-#                  @newFilters
-#               ])
-#            );
-#         }
-#      }
-#   }
-#
-#   unless ((ref($readWrite->get_output_filter()) ne "POE::Filter::SSL") ||
-#               ($readWrite->get_output_filter()->handshakeDone())) {
-#      $readWrite->put();
-#      return 0;
-#   }
-#
-#   if (@newFilters) {
-#      if (ref($readWrite->get_output_filter()) eq "POE::Filter::SSL") {
-#         $readWrite->set_output_filter(POE::Filter::Stackable->new(
-#            Filters => [
-#               $readWrite->get_output_filter(),
-#               @newFilters
-#            ])
-#         );
-#      }
-#   }
-#   
-#   return 1;
-#}
-
 sub get_pending {
   return undef;
 }
@@ -1259,13 +1221,13 @@ L<http://search.cpan.org/dist/POE-Filter-SSL>
 
 =head1 Commercial support
 
-Commercial support can be gained at <sslsupport at priv.de>.
+Commercial support can be gained at <sslsupport at cryptomagic.eu>.
 
 Used in our products, you can find on L<https://www.cryptomagic.eu/>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2010-2016 Markus Schraeder, CryptoMagic GmbH, all rights reserved.
+Copyright 2010-2017 Markus Schraeder, CryptoMagic GmbH, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
