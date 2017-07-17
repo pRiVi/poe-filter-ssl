@@ -238,7 +238,18 @@ sub PEMdataToEVP_PKEY {
 sub CTX_add_client_CA {
    my $ctx = shift;
    my $x509 = shift;
+   # TODO:XXX:FIXME: Errorchecking!
    Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($x509));
+}
+
+sub dataToBio {
+   my $data = shift;
+   # TODO:XXX:FIXME: Errorchecking!
+   my $bio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
+   my $sent = Net::SSLeay::BIO_write($dhbio, $data);
+   die "Cannot write to dhcert bio!"
+      if (($sent) != length($data));
+  return $bio;
 }
 
 sub new {
@@ -336,15 +347,6 @@ sub new {
    $globalinfos = [0, 0, []];
 
    $self
-}
-
-sub dataToBio {
-   my $data = shift;
-   my $bio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
-   my $sent = Net::SSLeay::BIO_write($dhbio, $data);
-   die "Cannot write to dhcert bio!"
-      if (($sent) != length($data));
-  return $bio;
 }
 
 sub VERIFY {
