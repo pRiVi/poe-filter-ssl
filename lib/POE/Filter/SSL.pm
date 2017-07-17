@@ -258,15 +258,39 @@ sub new {
       Net::SSLeay::CTX_set_options($self->{context}, 0x00400000); # SSL_OP_CIPHER_SERVER_PREFERENCE
    }
 
-   Net::SSLeay::CTX_use_RSAPrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
-   Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
    if ($params->{chain}) {
       Net::SSLeay::CTX_use_certificate_chain_file($self->{context}, $params->{chain});
+   } else {
+      if ($params->{keymem}) {
+         # TODO:XXX:FIXME: Warum nicht CTX_use_PrivateKey_file?
+         Net::SSLeay::CTX_use_RSAPrivateKey($self->{context}, PEMdataToRSA($params->{$params->{keymem}));
+      } else {
+         # TODO:XXX:FIXME: Warum nicht CTX_use_PrivateKey_file?
+         Net::SSLeay::CTX_use_RSAPrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
+      }
+      if ($params->{crtmem}) {
+         Net::SSLeay::CTX_use_certificate($self->{context}, PEMdataToX509($params->{crtmem}));
+      } else {
+         Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
+      }
    }
-   if ($params->{cacrt}) {
-      Net::SSLeay::CTX_load_verify_locations($self->{context}, $params->{cacrt}, '');
-      Net::SSLeay::CTX_set_client_CA_list($self->{context}, Net::SSLeay::load_client_CA_file($params->{cacrt}));
-      Net::SSLeay::CTX_set_verify_depth($self->{context}, 5);
+   if ($params->{cacrt}||
+       $params->{cacrtmem}) {
+      if ($params->{cacrtmem}) {
+         Net::SSLeay::CTX_load_verify_locations($self->{context}, undef);
+         Net::SSLeay::CTX_set_client_CA_list($self->{context}, undef);
+         if (ref($params->{cacrtmem}) eq "ARRAY") {
+            foreach my $curcert (@{$params->{cacrtmem}}) {
+               CTX_add_client_CA($self->{context}, $curcert);
+            }
+         } else {
+            CTX_add_client_CA($self->{context}, $params->{cacrtmem});
+         }
+      } else {
+         Net::SSLeay::CTX_load_verify_locations($self->{context}, $params->{cacrt}, '');
+         Net::SSLeay::CTX_set_client_CA_list($self->{context}, Net::SSLeay::load_client_CA_file($params->{cacrt}));
+      }
+      Net::SSLeay::CTX_set_verify_depth($self->{context}, $params->{caverifydepth} || 5);
    }
 
    if ($params->{cipher}) {
@@ -284,10 +308,7 @@ sub new {
        $params->{dhcertmem}) {
       my $dhbio = undef;
       if ($params->{dhcertmem}) {
-         $dhbio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
-         my $sent = Net::SSLeay::BIO_write($dhbio, $params->{dhcertmem});
-         die "Cannot write to dhcert bio!"
-            if (($sent) != length($params->{dhcertmem}));
+         $dhbio = dataToBio($params->{dhcertmem});
       } else {
          die "Cannot open dhcert file!"
             unless (-f $params->{dhcert} && ($dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r")));
@@ -315,6 +336,15 @@ sub new {
    $globalinfos = [0, 0, []];
 
    $self
+}
+
+sub dataToBio {
+   my $data = shift;
+   my $bio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
+   my $sent = Net::SSLeay::BIO_write($dhbio, $data);
+   die "Cannot write to dhcert bio!"
+      if (($sent) != length($data));
+  return $bio;
 }
 
 sub VERIFY {
