@@ -970,25 +970,35 @@ Returns a new I<POE::Filter::SSL> object. It accepts the following options:
 
 By default I<POE::Filter::SSL> acts as a SSL server. To use it in client mode, you have to set this option.
 
-=item crt
+=item crt{mem}
 
 The certificate file (.crt) for the server, a client certificate in client mode.
 
-=item key
+You are able to pass the already inmemory crt file as scalar via I<crtmem>.
+
+=item key{mem}
 
 The key file (.key) of the certificate (see I<crt> above).
 
-=item cacrt
+You are able to pass the already inmemory key file as scalar via I<keymem>.
 
-The ca certificate file (ca.crt), which is used to verificate the client certificates against a CA.
+=item cacrt{mem}
+
+The ca certificate file (ca.crt), which is used to verificate the client certificates against a CA. You can store multiple ca in one file, all of them gets imported.
+
+You are able to pass the already inmemory cacrt file as scalar via I<cacrtmem> or as an array ref of scalars, if you have multiple ca.
+
+=item caverifydepth
+
+By default the ca verify depth is 5, you can override this via this option.
 
 =item chain
 
-Chain certificate, you need it for example for startssl.org wich needs a intermedia certificates. Here you can configure it. You can generate this the following way:
+Chain certificate, you need it for example for startssl.org which needs a intermedia certificates. Here you can configure it. You can generate this the following way:
 
 cat client.crt intermediate.crt ca.crt > chain.pem
 
-In this case, you normaly have no I<key> and I<crt> option.
+In this case, you normalyly have no I<key> and I<crt> option. Currently it is not possible to pass this inmemory, only by file.
 
 =item cacrl
 
@@ -1006,7 +1016,7 @@ You are able to pass the already inmemory dhparam file as scalar(string) via I<d
 
 Only in server mode: Request during ssl handshake from the client a client certificat.
 
-B<WARNING:> If the client provides an untrusted or no client certficate, the connection is B<not> failing. You have to ask I<clientCertValid()> if the certicate is valid!
+B<WARNING:> If the client provides an untrusted or no client certificate, the connection is B<not> failing. You have to ask I<clientCertValid()> if the certificate is valid!
 
 =item nohonor
 
@@ -1032,7 +1042,7 @@ B<WARNING:> If the client is listed in the CRL file or an invalid client certifi
 
 =item handshakeDone(options)
 
-Returns I<true> if the handshake is done and all data for hanshake has been written out. It accepts the following options:
+Returns I<true> if the handshake is done and all data for handshake has been written out. It accepts the following options:
 
 =over 2
 
@@ -1086,7 +1096,7 @@ See the I<HTTPS-Server>, I<SSL on an established connection> and I<Client certif
 
 Returns I<true> if there is a client certificate, that might be untrusted.
 
-B<WARNING:> If the client provides an untrusted client certficate a client certicate that is listed in CRL, this function returns I<true>. You have to ask I<clientCertValid()> if the certicate is valid!
+B<WARNING:> If the client provides an untrusted client certificate a client certificate that is listed in CRL, this function returns I<true>. You have to ask I<clientCertValid()> if the certificate is valid!
 
 =item errorhandler
 
@@ -1100,7 +1110,7 @@ Do not report any error.
 
 =item I<CODE>
 
-Setting errorhandler to a reference of a function allows to be called it callback function with the following options:
+Setting errorhandler to a reference of a function allows one to be called it callback function with the following options:
 
 ARG1: POE:SSL::Filter instance
 
@@ -1108,7 +1118,7 @@ ARG2: Ref on a Hash with the following keys:
 
   ret        The return code of Net::SSLeay::connect (client) or Net::SSLeay::accept (server)
   ssl        The SSL context (SSL_CTX)
-  msg        The error message as text, as normaly reported via carp
+  msg        The error message as text, as normally reported via carp
   get_error  The error code of get_error the ssl context
   error      The error code of get_error without context
 
@@ -1122,7 +1132,7 @@ Do Carp/confess (stacktrace) on error.
 
 =item "carponetime"
 
-Report carp for one occurence only one time - over all!
+Report carp for one occurrence only one time - over all!
 
 =back
 
