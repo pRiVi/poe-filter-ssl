@@ -1149,6 +1149,12 @@ Example:
 
 =item X509_get_serialNumber()
 
+=item SSL_CTX_set_tmp_dh()
+
+=item SSL_CTX_set_tmp_rsa()
+
+=item SSL_set_tmp_dh()
+
 =item PEM_read_bio_PrivateKey()
 
 =item PEM_read_bio_RSAPrivateKey()
