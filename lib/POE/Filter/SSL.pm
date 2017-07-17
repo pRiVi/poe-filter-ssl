@@ -212,6 +212,7 @@ sub checkForDoSendback {
 sub PEMdataToX509 {
    my $ctx = shift;
    my $bio = dataToBio($crt);
+   # TODO:XXX:FIXME: Errorchecking!
    my $x509 = PEM_read_bio_X509($bio);
    Net::SSLeay::BIO_free($bio);
    return $x509;
@@ -221,6 +222,7 @@ sub PEMdataToRSA {
    my $ctx = shift;
    my $bio = dataToBio($crt);
    # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
+   # TODO:XXX:FIXME: Errorchecking!
    my $rsa = PEM_read_bio_RSAPrivateKey($bio);
    Net::SSLeay::BIO_free($bio);
    return $rsa;
@@ -230,6 +232,7 @@ sub PEMdataToEVP_PKEY {
    my $ctx = shift;
    my $bio = dataToBio($crt);
    # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
+   # TODO:XXX:FIXME: Errorchecking!
    my $evp_pkey = PEM_read_bio_PrivateKey($bio);
    Net::SSLeay::BIO_free($bio);
    return $evp_pkey;
@@ -266,10 +269,12 @@ sub new {
    $self->{context} = Net::SSLeay::CTX_new();
 
    if ((!$self->{client}) && (!$params->{"nohonor"})) { # Beim Apache: SSLHonorCipherOrder
+      # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::CTX_set_options($self->{context}, 0x00400000); # SSL_OP_CIPHER_SERVER_PREFERENCE
    }
 
    if ($params->{chain}) {
+      # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::CTX_use_certificate_chain_file($self->{context}, $params->{chain});
    } else {
       if ($params->{keymem}) {
@@ -280,15 +285,19 @@ sub new {
          Net::SSLeay::CTX_use_RSAPrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
       }
       if ($params->{crtmem}) {
+         # TODO:XXX:FIXME: Errorchecking!
          Net::SSLeay::CTX_use_certificate($self->{context}, PEMdataToX509($params->{crtmem}));
       } else {
+         # TODO:XXX:FIXME: Errorchecking!
          Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
       }
    }
    if ($params->{cacrt}||
        $params->{cacrtmem}) {
       if ($params->{cacrtmem}) {
+         # TODO:XXX:FIXME: Errorchecking!
          Net::SSLeay::CTX_load_verify_locations($self->{context}, undef);
+         # TODO:XXX:FIXME: Errorchecking!
          Net::SSLeay::CTX_set_client_CA_list($self->{context}, undef);
          if (ref($params->{cacrtmem}) eq "ARRAY") {
             foreach my $curcert (@{$params->{cacrtmem}}) {
@@ -298,13 +307,17 @@ sub new {
             CTX_add_client_CA($self->{context}, $params->{cacrtmem});
          }
       } else {
+         # TODO:XXX:FIXME: Errorchecking!
          Net::SSLeay::CTX_load_verify_locations($self->{context}, $params->{cacrt}, '');
+         # TODO:XXX:FIXME: Errorchecking!
          Net::SSLeay::CTX_set_client_CA_list($self->{context}, Net::SSLeay::load_client_CA_file($params->{cacrt}));
       }
+      # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::CTX_set_verify_depth($self->{context}, $params->{caverifydepth} || 5);
    }
 
    if ($params->{cipher}) {
+      # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::CTX_set_cipher_list($self->{context}, $params->{cipher});
    }
 
@@ -313,6 +326,7 @@ sub new {
    $self->{wbio} = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem())
       or die("Create wBIO_s_mem(): ".$!);
    $self->{ssl} = Net::SSLeay::new($self->{context});
+   # TODO:XXX:FIXME: Errorchecking!
    Net::SSLeay::set_bio($self->{ssl}, $self->{rbio}, $self->{wbio});
 
    if ($params->{dhcert} ||
@@ -324,12 +338,14 @@ sub new {
          die "Cannot open dhcert file!"
             unless (-f $params->{dhcert} && ($dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r")));
       }
+      # TODO:XXX:FIXME: Errorchecking!
       my $dhret = Net::SSLeay::PEM_read_bio_DHparams($dhbio);
       Net::SSLeay::BIO_free($dhbio);
       die "Couldn't set DH parameters!"
          if (SSL_set_tmp_dh($self->{ssl}, $dhret) < 0);
       #die "Couldn't set CTX DH parameters!"
       #   if (SSL_CTX_set_tmp_dh($self->{context}, $dhret) < 0);
+      # TODO:XXX:FIXME: Errorchecking!
       my $rsa = Net::SSLeay::RSA_generate_key(2048, 73);
       die "Couldn't set RSA key!"
          if (!SSL_CTX_set_tmp_rsa($self->{context}, $rsa));
@@ -341,6 +357,7 @@ sub new {
                    | &Net::SSLeay::VERIFY_CLIENT_ONCE;
       $orfilter |=  &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
          if $params->{blockbadclientcert};
+      # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
    }
    
@@ -354,6 +371,7 @@ sub VERIFY {
    print "VERIFY!\n" if $debug;
    $globalinfos->[0] = $ok ? 1 : 2 if ($globalinfos->[0] != 2);
    $globalinfos->[1]++;
+   # TODO:XXX:FIXME: Errorchecking!
    if (my $x = Net::SSLeay::X509_STORE_CTX_get_current_cert($x509_store_ctx)) {
       push(@{$globalinfos->[2]},[Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_subject_name($x)),
                                  Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_issuer_name($x)),
