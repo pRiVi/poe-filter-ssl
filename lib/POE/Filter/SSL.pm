@@ -210,7 +210,7 @@ sub checkForDoSendback {
 }
 
 sub PEMdataToX509 {
-   my $ctx = shift;
+   my $crt = shift;
    my $bio = dataToBio($crt);
    # TODO:XXX:FIXME: Errorchecking!
    my $x509 = PEM_read_bio_X509($bio);
@@ -219,7 +219,7 @@ sub PEMdataToX509 {
 }
 
 sub PEMdataToRSA {
-   my $ctx = shift;
+   my $crt = shift;
    my $bio = dataToBio($crt);
    # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
    # TODO:XXX:FIXME: Errorchecking!
@@ -229,7 +229,7 @@ sub PEMdataToRSA {
 }
 
 sub PEMdataToEVP_PKEY {
-   my $ctx = shift;
+   my $crt = shift;
    my $bio = dataToBio($crt);
    # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
    # TODO:XXX:FIXME: Errorchecking!
