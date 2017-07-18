@@ -210,30 +210,22 @@ sub checkForDoSendback {
 }
 
 sub PEMdataToX509 {
-   my $crt = shift;
-   my $bio = dataToBio($crt);
-   # TODO:XXX:FIXME: Errorchecking!
-   my $x509 = PEM_read_bio_X509($bio);
+   my $x509 = shift;
+   my $bio = dataToBio($x509);
+   my $x509result = undef;
+   die "Error using x509: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+      unless ($x509result = Net::SSLeay::PEM_read_bio_X509($bio));
    Net::SSLeay::BIO_free($bio);
-   return $x509;
-}
-
-sub PEMdataToRSA {
-   my $crt = shift;
-   my $bio = dataToBio($crt);
-   # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
-   # TODO:XXX:FIXME: Errorchecking!
-   my $rsa = PEM_read_bio_RSAPrivateKey($bio);
-   Net::SSLeay::BIO_free($bio);
-   return $rsa;
+   return $x509result;
 }
 
 sub PEMdataToEVP_PKEY {
+   my $ssl = shift;
    my $crt = shift;
    my $bio = dataToBio($crt);
-   # TODO:XXX:FIXME: Warum nicht PEM_read_bio_PrivateKey?
-   # TODO:XXX:FIXME: Errorchecking!
-   my $evp_pkey = PEM_read_bio_PrivateKey($bio);
+   my $evp_pkey = undef;
+   die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+      unless ($evp_pkey = Net::SSLeay::PEM_read_bio_PrivateKey($bio));
    Net::SSLeay::BIO_free($bio);
    return $evp_pkey;
 }
@@ -241,18 +233,21 @@ sub PEMdataToEVP_PKEY {
 sub CTX_add_client_CA {
    my $ctx = shift;
    my $x509 = shift;
-   # TODO:XXX:FIXME: Errorchecking!
-   Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($x509));
+   my $pemx509 = PEMdataToX509($x509);
+   my $err = Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($x509));
+   die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+      if ($err && ($err != 1));
 }
 
 sub dataToBio {
    my $data = shift;
-   # TODO:XXX:FIXME: Errorchecking!
    my $bio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
    my $sent = Net::SSLeay::BIO_write($bio, $data);
-   die "Cannot write to dhcert bio!"
+   print "Wrote ".$sent." of ".length($data)." bytes.\n"
+      if $debug;
+   die "Cannot write to bio!"
       if (($sent) != length($data));
-  return $bio;
+   return $bio;
 }
 
 sub new {
@@ -268,62 +263,74 @@ sub new {
 
    $self->{context} = Net::SSLeay::CTX_new();
 
-   if ((!$self->{client}) && (!$params->{"nohonor"})) { # Beim Apache: SSLHonorCipherOrder
-      # TODO:XXX:FIXME: Errorchecking!
-      Net::SSLeay::CTX_set_options($self->{context}, 0x00400000); # SSL_OP_CIPHER_SERVER_PREFERENCE
-   }
+   my $err = undef;
+   $err = Net::SSLeay::CTX_set_options($self->{context}, 0x00400000) # SSL_OP_CIPHER_SERVER_PREFERENCE # Beim Apache: SSLHonorCipherOrder
+      if ((!$self->{client}) && (!$params->{"nohonor"}));
+   die "Error using crtmem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+      if ($err && ($err != 1));
+   $err = undef;
 
    if ($params->{chain}) {
-      # TODO:XXX:FIXME: Errorchecking!
-      Net::SSLeay::CTX_use_certificate_chain_file($self->{context}, $params->{chain});
+      $err = Net::SSLeay::CTX_use_certificate_chain_file($self->{context}, $params->{chain});
+      die "Error using chain: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+         if ($err && ($err != 1));
    } else {
       if ($params->{keymem}) {
-         # TODO:XXX:FIXME: Warum nicht CTX_use_PrivateKey_file?
-         Net::SSLeay::CTX_use_RSAPrivateKey($self->{context}, PEMdataToRSA($params->{$params->{keymem}}));
+         $err = Net::SSLeay::CTX_use_PrivateKey($self->{context}, PEMdataToEVP_PKEY($self->{ssl}, $params->{keymem}));
       } else {
-         # TODO:XXX:FIXME: Warum nicht CTX_use_PrivateKey_file?
-         Net::SSLeay::CTX_use_RSAPrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
+         $err = Net::SSLeay::CTX_use_PrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
       }
+      die "Error using keymem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+         if ($err && ($err != 1));
       if ($params->{crtmem}) {
-         # TODO:XXX:FIXME: Errorchecking!
-         Net::SSLeay::CTX_use_certificate($self->{context}, PEMdataToX509($params->{crtmem}));
+         $err = Net::SSLeay::CTX_use_certificate($self->{context}, PEMdataToX509($params->{crtmem}));
       } else {
          # TODO:XXX:FIXME: Errorchecking!
-         Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
+         $err = Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
       }
+      die "Error using crtmem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+         if ($err && ($err != 1));
    }
+
+   $err = undef;
    if ($params->{cacrt}||
        $params->{cacrtmem}) {
       if ($params->{cacrtmem}) {
          if (ref($params->{cacrtmem}) eq "ARRAY") {
             foreach my $curcert (@{$params->{cacrtmem}}) {
-               CTX_add_client_CA($self->{context}, $curcert);
+               $err = CTX_add_client_CA($self->{context}, $curcert);
+               last
+                  unless $err;
             }
          } else {
-            CTX_add_client_CA($self->{context}, $params->{cacrtmem});
+            $err = CTX_add_client_CA($self->{context}, $params->{cacrtmem});
          }
       } else {
-         # TODO:XXX:FIXME: Errorchecking!
-         Net::SSLeay::CTX_load_verify_locations($self->{context}, $params->{cacrt}, '');
-         # TODO:XXX:FIXME: Errorchecking!
-         Net::SSLeay::CTX_set_client_CA_list($self->{context}, Net::SSLeay::load_client_CA_file($params->{cacrt}));
+         $err = Net::SSLeay::CTX_load_verify_locations($self->{context}, $params->{cacrt}, '');
+         $err = Net::SSLeay::CTX_set_client_CA_list($self->{context}, Net::SSLeay::load_client_CA_file($params->{cacrt}))
+            unless ($err && ($err == 1));
       }
-      # TODO:XXX:FIXME: Errorchecking!
-      Net::SSLeay::CTX_set_verify_depth($self->{context}, $params->{caverifydepth} || 5);
+      $err = Net::SSLeay::CTX_set_verify_depth($self->{context}, $params->{caverifydepth} || 5)
+         unless ($err && ($err == 1));
    }
+   die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+      if ($err && ($err != 1));
 
-   if ($params->{cipher}) {
-      # TODO:XXX:FIXME: Errorchecking!
-      Net::SSLeay::CTX_set_cipher_list($self->{context}, $params->{cipher});
-   }
+   $err = undef;
+   $err = Net::SSLeay::CTX_set_cipher_list($self->{context}, $params->{cipher})
+      if ($params->{cipher});
+   die "Error setting cipher: ".Net::SSLeay::ERR_error_string(ERR_get_error())
+      if ($err && ($err != 1));
 
+   $err = undef;
    $self->{rbio} = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem())
-      or die("Create rBIO_s_mem(): ".$!);
+      or die("Error creating r BIO: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error()));
    $self->{wbio} = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem())
-      or die("Create wBIO_s_mem(): ".$!);
+      or die("Error creating w BIO: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error()));
    $self->{ssl} = Net::SSLeay::new($self->{context});
-   # TODO:XXX:FIXME: Errorchecking!
-   Net::SSLeay::set_bio($self->{ssl}, $self->{rbio}, $self->{wbio});
+   $err = Net::SSLeay::set_bio($self->{ssl}, $self->{rbio}, $self->{wbio});
+   die "Error setting r/w BIOs: "..Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+      if ($err && ($err != 1));
 
    if ($params->{dhcert} ||
        $params->{dhcertmem}) {
@@ -1210,12 +1217,6 @@ Example:
 =item SSL_CTX_set_tmp_rsa()
 
 =item SSL_set_tmp_dh()
-
-=item PEM_read_bio_PrivateKey()
-
-=item PEM_read_bio_RSAPrivateKey()
-
-=item PEM_read_bio_X509()
 
 =item clone()
 
