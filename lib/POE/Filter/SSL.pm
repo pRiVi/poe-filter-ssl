@@ -8,7 +8,7 @@ use Carp qw(carp confess);
 use POE;
 
 use vars qw($VERSION @ISA);
-$VERSION = '0.32';
+$VERSION = '0.33';
 sub DOSENDBACK () { 1 }
 
 our $globalinfos;
