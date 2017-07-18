@@ -263,13 +263,10 @@ sub new {
 
    $self->{context} = Net::SSLeay::CTX_new();
 
-   my $err = undef;
-   $err = Net::SSLeay::CTX_set_options($self->{context}, 0x00400000) # SSL_OP_CIPHER_SERVER_PREFERENCE # Beim Apache: SSLHonorCipherOrder
+   Net::SSLeay::CTX_set_options($self->{context}, 0x00400000) # SSL_OP_CIPHER_SERVER_PREFERENCE # Beim Apache: SSLHonorCipherOrder
       if ((!$self->{client}) && (!$params->{"nohonor"}));
-   die "Error using crtmem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
-      if ($err && ($err != 1));
-   $err = undef;
 
+   my $err = undef;
    if ($params->{chain}) {
       $err = Net::SSLeay::CTX_use_certificate_chain_file($self->{context}, $params->{chain});
       die "Error using chain: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
