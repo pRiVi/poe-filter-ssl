@@ -613,7 +613,7 @@ POE::Filter::SSL - The easiest and flexiblest way to SSL in POE!
 
 =head1 VERSION
 
-Version 0.32
+Version 0.33
 
 =head1 DESCRIPTION
 
