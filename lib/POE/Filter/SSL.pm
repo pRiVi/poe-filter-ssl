@@ -365,6 +365,11 @@ sub new {
       # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
    }
+   if ($params->{sni}) {
+      my $err = Net::SSLeay::set_tlsext_host_name($self->{ssl}, $params->{sni});
+      die "Error setting sni:".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+         if ($err && ($err != 1));
+   }
    
    $globalinfos = [0, 0, []];
 
@@ -1072,6 +1077,10 @@ You are able to pass the already inmemory dhparam file as scalar(string) via I<d
 Only in server mode: Request during ssl handshake from the client a client certificat.
 
 B<WARNING:> If the client provides an untrusted or no client certificate, the connection is B<not> failing. You have to ask I<clientCertValid()> if the certificate is valid!
+
+=item sni
+
+Allows to set the SNI hostname indication in first packet of handshake. See https://de.wikipedia.org/wiki/Server_Name_Indication
 
 =item tls
 
