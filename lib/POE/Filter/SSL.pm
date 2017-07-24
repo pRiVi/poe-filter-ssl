@@ -331,7 +331,7 @@ sub new {
       or die("Error creating w BIO: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error()));
    $self->{ssl} = Net::SSLeay::new($self->{context});
    $err = Net::SSLeay::set_bio($self->{ssl}, $self->{rbio}, $self->{wbio});
-   die "Error setting r/w BIOs: "..Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+   die "Error setting r/w BIOs: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
       if ($err && ($err != 1));
 
    if ($params->{dhcert} ||
