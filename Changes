@@ -124,3 +124,7 @@ Revision history for POE-Filter-SSL
 	Use in Net::SSLeay 1.65 available PrivateKey functions instead of RSAPrivateKey functions
 	Errorchecking and dying on errors
 
+0.34	24.07.2017
+	Allow to specify SNI
+	Allow to force tls(1.2)
+
