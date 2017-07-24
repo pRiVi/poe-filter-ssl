@@ -261,7 +261,12 @@ sub new {
    $self->{errorhandler} = $params->{errorhandler};
    $self->{params} = $params;
 
-   $self->{context} = Net::SSLeay::CTX_new();
+   $self->{context} =
+      ($params->{tls} || $params->{tls1_2}) ?
+                        ($params->{tls1_2}  ?
+         Net::SSLeay::CTX_tlsv1_2_new() :
+         Net::SSLeay::CTX_tlsv1_new()) :
+         Net::SSLeay::CTX_new();
 
    Net::SSLeay::CTX_set_options($self->{context}, 0x00400000) # SSL_OP_CIPHER_SERVER_PREFERENCE # Beim Apache: SSLHonorCipherOrder
       if ((!$self->{client}) && (!$params->{"nohonor"}));
@@ -1067,6 +1072,14 @@ You are able to pass the already inmemory dhparam file as scalar(string) via I<d
 Only in server mode: Request during ssl handshake from the client a client certificat.
 
 B<WARNING:> If the client provides an untrusted or no client certificate, the connection is B<not> failing. You have to ask I<clientCertValid()> if the certificate is valid!
+
+=item tls
+
+Force in the handshake the use of tls, disables support for the obsolete SSL handshake.
+
+=item tls1_2
+
+Force in the handshake the use of tls in version 1.2, disables support for the obsolete SSL handshake.
 
 =item nohonor
 
