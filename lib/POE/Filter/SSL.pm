@@ -233,8 +233,11 @@ sub PEMdataToEVP_PKEY {
 sub CTX_add_client_CA {
    my $ctx = shift;
    my $x509 = shift;
-   my $pemx509 = PEMdataToX509($x509);
-   my $err = Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($x509));
+   my $ssl = shift;
+   my $err = Net::SSLeay::X509_STORE_add_cert(Net::SSLeay::CTX_get_cert_store($ctx), PEMdataToX509($x509));
+   die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
+      if ($err && ($err != 1));
+   $err = Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($x509));
    die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
       if ($err && ($err != 1));
 }
@@ -256,7 +259,8 @@ sub new {
    my $self = bless({}, $type);
    $self->{buffer} = '';
    $self->{debug} = $params->{debug} || 0;
-   $self->{cacrl} = $params->{cacrl} || undef;
+   $self->{cacrl} = $params->{cacrl}
+      if $self->{cacrl};
    $self->{client} = $params->{client} || 0;
    $self->{errorhandler} = $params->{errorhandler};
    $self->{params} = $params;
@@ -279,16 +283,25 @@ sub new {
    } else {
       if ($params->{keymem}) {
          $err = Net::SSLeay::CTX_use_PrivateKey($self->{context}, PEMdataToEVP_PKEY($self->{ssl}, $params->{keymem}));
+         print "Loaded keymem(".length($params->{keymem})." Bytes) with result ".$err."\n"
+            if $debug;
       } else {
          $err = Net::SSLeay::CTX_use_PrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
+         print "Loaded key from file ".$params->{key}." with result ".$err."\n"
+            if $debug;
       }
       die "Error using keymem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
       if ($params->{crtmem}) {
-         $err = Net::SSLeay::CTX_use_certificate($self->{context}, PEMdataToX509($params->{crtmem}));
+         my $crt = PEMdataToX509($params->{crtmem});
+         $err = Net::SSLeay::CTX_use_certificate($self->{context}, $crt);
+         print "Loaded crtmem(".length($params->{crtmem})." Bytes/".$crt.") with result ".$err."\n"
+            if $debug;
       } else {
          # TODO:XXX:FIXME: Errorchecking!
          $err = Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
+         print "Loaded crt from file ".$params->{crt}." with result ".$err."\n"
+            if $debug;
       }
       die "Error using crtmem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
@@ -300,17 +313,23 @@ sub new {
       if ($params->{cacrtmem}) {
          if (ref($params->{cacrtmem}) eq "ARRAY") {
             foreach my $curcert (@{$params->{cacrtmem}}) {
-               $err = CTX_add_client_CA($self->{context}, $curcert);
+               $err = CTX_add_client_CA($self->{context}, $curcert, $self->{ssl});
                last
                   unless $err;
             }
          } else {
-            $err = CTX_add_client_CA($self->{context}, $params->{cacrtmem});
+            $err = CTX_add_client_CA($self->{context}, $params->{cacrtmem}, $self->{ssl});
+            print "Loaded cacrtmem(".length($params->{cacrtmem})." Bytes) with result ".$err."\n"
+               if $debug;
          }
       } else {
          $err = Net::SSLeay::CTX_load_verify_locations($self->{context}, $params->{cacrt}, '');
+         print "Loaded cacrt from file ".$params->{cacrt}." with result ".$err."\n"
+            if $debug;
          $err = Net::SSLeay::CTX_set_client_CA_list($self->{context}, Net::SSLeay::load_client_CA_file($params->{cacrt}))
             unless ($err && ($err == 1));
+         print "Set client cacrt from file ".$params->{cacrt}." with result ".$err."\n"
+            if $debug;
       }
       $err = Net::SSLeay::CTX_set_verify_depth($self->{context}, $params->{caverifydepth} || 5)
          unless ($err && ($err == 1));
@@ -341,19 +360,25 @@ sub new {
          $dhbio = dataToBio($params->{dhcertmem});
       } else {
          die "Cannot open dhcert file!"
-            unless (-f $params->{dhcert} && ($dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r")));
+            unless ((-s $params->{dhcert}) && ($dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r")));
       }
       # TODO:XXX:FIXME: Errorchecking!
       my $dhret = Net::SSLeay::PEM_read_bio_DHparams($dhbio);
+      print "Loaded dhcert with result ".$err."\n"
+         if $debug;
       Net::SSLeay::BIO_free($dhbio);
       die "Couldn't set DH parameters!"
          if (SSL_set_tmp_dh($self->{ssl}, $dhret) < 0);
+      print "Set dhcert params with result ".$err."\n"
+         if $debug;
       #die "Couldn't set CTX DH parameters!"
       #   if (SSL_CTX_set_tmp_dh($self->{context}, $dhret) < 0);
       # TODO:XXX:FIXME: Errorchecking!
       my $rsa = Net::SSLeay::RSA_generate_key(2048, 73);
       die "Couldn't set RSA key!"
-         if (!SSL_CTX_set_tmp_rsa($self->{context}, $rsa));
+         if (!Net::SSLeay::CTX_set_tmp_rsa($self->{context}, $rsa));
+      print "Set dhrsa with result ".$err."\n"
+         if $debug;
       Net::SSLeay::RSA_free($rsa);
    }
 
@@ -364,9 +389,14 @@ sub new {
          if $params->{blockbadclientcert};
       # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
+      Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
+      print "Set verify ".($params->{blockbadclientcert} ? "FORCE" : "")." ".$orfilter."\n"
+         if $debug;
    }
    if ($params->{sni}) {
       my $err = Net::SSLeay::set_tlsext_host_name($self->{ssl}, $params->{sni});
+      print "Set sni with result ".$err."\n"
+         if $debug;
       die "Error setting sni:".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
    }
@@ -378,7 +408,7 @@ sub new {
 
 sub VERIFY {
    my ($ok, $x509_store_ctx) = @_;
-   print "VERIFY!\n" if $debug;
+   print "VERIFY ".$ok."!\n" if $debug;
    $globalinfos->[0] = $ok ? 1 : 2 if ($globalinfos->[0] != 2);
    $globalinfos->[1]++;
    # TODO:XXX:FIXME: Errorchecking!
