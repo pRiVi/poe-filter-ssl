@@ -376,7 +376,7 @@ sub new {
       # TODO:XXX:FIXME: Errorchecking!
       my $rsa = Net::SSLeay::RSA_generate_key(2048, 73);
       die "Couldn't set RSA key!"
-         if (!Net::SSLeay::CTX_set_tmp_rsa($self->{context}, $rsa));
+         if (!SSL_CTX_set_tmp_rsa($self->{context}, $rsa));
       print "Set dhrsa with result ".$err."\n"
          if $debug;
       Net::SSLeay::RSA_free($rsa);
