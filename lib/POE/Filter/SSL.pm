@@ -284,11 +284,11 @@ sub new {
       if ($params->{keymem}) {
          $err = Net::SSLeay::CTX_use_PrivateKey($self->{context}, PEMdataToEVP_PKEY($self->{ssl}, $params->{keymem}));
          print "Loaded keymem(".length($params->{keymem})." Bytes) with result ".$err."\n"
-            if $debug;
+            if $self->{debug};
       } else {
          $err = Net::SSLeay::CTX_use_PrivateKey_file($self->{context}, $params->{key}, &Net::SSLeay::FILETYPE_PEM);
          print "Loaded key from file ".$params->{key}." with result ".$err."\n"
-            if $debug;
+            if $self->{debug};
       }
       die "Error using keymem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
@@ -296,12 +296,12 @@ sub new {
          my $crt = PEMdataToX509($params->{crtmem});
          $err = Net::SSLeay::CTX_use_certificate($self->{context}, $crt);
          print "Loaded crtmem(".length($params->{crtmem})." Bytes/".$crt.") with result ".$err."\n"
-            if $debug;
+            if $self->{debug};
       } else {
          # TODO:XXX:FIXME: Errorchecking!
          $err = Net::SSLeay::CTX_use_certificate_file($self->{context}, $params->{crt}, &Net::SSLeay::FILETYPE_PEM);
          print "Loaded crt from file ".$params->{crt}." with result ".$err."\n"
-            if $debug;
+            if $self->{debug};
       }
       die "Error using crtmem: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
@@ -320,16 +320,16 @@ sub new {
          } else {
             $err = CTX_add_client_CA($self->{context}, $params->{cacrtmem}, $self->{ssl});
             print "Loaded cacrtmem(".length($params->{cacrtmem})." Bytes) with result ".$err."\n"
-               if $debug;
+               if $self->{debug};
          }
       } else {
          $err = Net::SSLeay::CTX_load_verify_locations($self->{context}, $params->{cacrt}, '');
          print "Loaded cacrt from file ".$params->{cacrt}." with result ".$err."\n"
-            if $debug;
+            if $self->{debug};
          $err = Net::SSLeay::CTX_set_client_CA_list($self->{context}, Net::SSLeay::load_client_CA_file($params->{cacrt}))
             unless ($err && ($err == 1));
          print "Set client cacrt from file ".$params->{cacrt}." with result ".$err."\n"
-            if $debug;
+            if $self->{debug};
       }
       $err = Net::SSLeay::CTX_set_verify_depth($self->{context}, $params->{caverifydepth} || 5)
          unless ($err && ($err == 1));
@@ -365,38 +365,40 @@ sub new {
       # TODO:XXX:FIXME: Errorchecking!
       my $dhret = Net::SSLeay::PEM_read_bio_DHparams($dhbio);
       print "Loaded dhcert with result ".$err."\n"
-         if $debug;
+         if $self->{debug};
       Net::SSLeay::BIO_free($dhbio);
       die "Couldn't set DH parameters!"
          if (SSL_set_tmp_dh($self->{ssl}, $dhret) < 0);
       print "Set dhcert params with result ".$err."\n"
-         if $debug;
+         if $self->{debug};
       #die "Couldn't set CTX DH parameters!"
       #   if (SSL_CTX_set_tmp_dh($self->{context}, $dhret) < 0);
       # TODO:XXX:FIXME: Errorchecking!
       my $rsa = Net::SSLeay::RSA_generate_key(2048, 73);
+      #die "Couldn't set RSA key!"
+      #   if (!Net::SSLeay::set_tmp_rsa($self->{ssl}, $rsa));
       die "Couldn't set RSA key!"
          if (!Net::SSLeay::CTX_set_tmp_rsa($self->{context}, $rsa));
       print "Set dhrsa with result ".$err."\n"
-         if $debug;
+         if $self->{debug};
       Net::SSLeay::RSA_free($rsa);
    }
 
    if ($params->{clientcert}) {
       my $orfilter = &Net::SSLeay::VERIFY_PEER
                    | &Net::SSLeay::VERIFY_CLIENT_ONCE;
-      $orfilter |=  &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
+      $orfilter |=   &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
          if $params->{blockbadclientcert};
       # TODO:XXX:FIXME: Errorchecking!
       Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
       Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
       print "Set verify ".($params->{blockbadclientcert} ? "FORCE" : "")." ".$orfilter."\n"
-         if $debug;
+         if $self->{debug};
    }
    if ($params->{sni}) {
       my $err = Net::SSLeay::set_tlsext_host_name($self->{ssl}, $params->{sni});
       print "Set sni with result ".$err."\n"
-         if $debug;
+         if $self->{debug};
       die "Error setting sni:".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
    }
