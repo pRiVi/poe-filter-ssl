@@ -378,23 +378,21 @@ sub new {
       #die "Couldn't set RSA key!"
       #   if (!Net::SSLeay::set_tmp_rsa($self->{ssl}, $rsa));
       die "Couldn't set RSA key!"
-         if (!Net::SSLeay::CTX_set_tmp_rsa($self->{context}, $rsa));
+         if (!SSL_CTX_set_tmp_rsa($self->{context}, $rsa));
       print "Set dhrsa with result ".$err."\n"
          if $self->{debug};
       Net::SSLeay::RSA_free($rsa);
    }
-
-   if ($params->{clientcert}) {
-      my $orfilter = &Net::SSLeay::VERIFY_PEER
-                   | &Net::SSLeay::VERIFY_CLIENT_ONCE;
-      $orfilter |=   &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
-         if $params->{blockbadclientcert};
-      # TODO:XXX:FIXME: Errorchecking!
-      Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
-      Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
-      print "Set verify ".($params->{blockbadclientcert} ? "FORCE" : "")." ".$orfilter."\n"
-         if $self->{debug};
-   }
+   my $orfilter = &Net::SSLeay::VERIFY_PEER;
+   $orfilter |=   &Net::SSLeay::VERIFY_CLIENT_ONCE
+      if $params->{clientcert};
+   $orfilter |=   &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
+      if $params->{blockbadclientcert};
+   # TODO:XXX:FIXME: Errorchecking!
+   Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
+   Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
+   print "Set verify ".($params->{blockbadclientcert} ? "FORCE" : "")." ".$orfilter."\n"
+      if $debug;
    if ($params->{sni}) {
       my $err = Net::SSLeay::set_tlsext_host_name($self->{ssl}, $params->{sni});
       print "Set sni with result ".$err."\n"
