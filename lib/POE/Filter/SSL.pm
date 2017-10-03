@@ -411,7 +411,12 @@ sub VERIFY {
    print "VERIFY ".$ok."!\n" if $debug;
    $globalinfos->[0] = $ok ? 1 : 2 if ($globalinfos->[0] != 2);
    $globalinfos->[1]++;
-   # TODO:XXX:FIXME: Errorchecking!
+   # TODO:XXX:FIXME: Chainlength check
+   #X509_STORE_CTX_set_error($x509_store_ctx, X509_V_ERR_CERT_CHAIN_TOO_LONG)
+   #   if (X509_STORE_CTX_get_error_depth(ctx) > uuu);
+   # TODO:XXX:FIXME: No globalconfig
+   #    ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+   #    mydata = SSL_get_ex_data(ssl, mydata_index);
    if (my $x = Net::SSLeay::X509_STORE_CTX_get_current_cert($x509_store_ctx)) {
       push(@{$globalinfos->[2]},[Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_subject_name($x)),
                                  Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_issuer_name($x)),
