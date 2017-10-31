@@ -1297,6 +1297,14 @@ Example:
 
 =item checkForDoSendback()
 
+=item CTX_add_client_CA()
+
+=item PEMdataToEVP_PKEY
+
+=item PEMdataToX509
+
+=item dataToBio
+
 =back
 
 =head1 AUTHOR
