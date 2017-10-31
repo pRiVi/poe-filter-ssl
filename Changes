@@ -136,3 +136,6 @@ Revision history for POE-Filter-SSL
 	Strawberry Perl: Compileroptions to compile, -ldl before other modules
 	Save error code on chain certificate verifying
 
+0.36	01.11.2017
+	Again pod errors
+
