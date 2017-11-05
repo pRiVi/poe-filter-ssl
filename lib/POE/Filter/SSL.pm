@@ -12,7 +12,6 @@ $VERSION = '0.36';
 sub DOSENDBACK () { 1 }
 
 our $globalinfos;
-my $debug = 0;
 
 my $PATCH         = 18;
 my $HANDSHAKE     = 19;
@@ -244,10 +243,11 @@ sub CTX_add_client_CA {
 
 sub dataToBio {
    my $data = shift;
+   my $self = $globalinfos->[3] || {};
    my $bio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
    my $sent = Net::SSLeay::BIO_write($bio, $data);
    print "Wrote ".$sent." of ".length($data)." bytes.\n"
-      if $debug;
+      if $self->{debug};
    die "Cannot write to bio!"
       if (($sent) != length($data));
    return $bio;
@@ -255,6 +255,9 @@ sub dataToBio {
 
 sub new {
    my $type = shift;
+
+   $globalinfos = [0, 0, [], $self];
+
    my $params = {@_};
    my $self = bless({}, $type);
    $self->{buffer} = '';
@@ -396,7 +399,7 @@ sub new {
    Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
    Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
    print "Set verify ".($params->{blockbadclientcert} ? "FORCE" : "")." ".$orfilter."\n"
-      if $debug;
+      if $self->{debug};
    if ($params->{sni}) {
       my $err = Net::SSLeay::set_tlsext_host_name($self->{ssl}, $params->{sni});
       print "Set sni with result ".$err."\n"
@@ -404,8 +407,6 @@ sub new {
       die "Error setting sni:".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
    }
-   
-   $globalinfos = [0, 0, []];
 
    $self
 }
@@ -413,7 +414,8 @@ sub new {
 sub VERIFY {
    my ($ok, $x509_store_ctx) = @_;
    print "VERIFY ".$ok."!\n" if $debug;
-   $globalinfos->[0] = $ok ? 1 : 2 if ($globalinfos->[0] != 2);
+   $globalinfos->[0] = $ok ? 1 : 2
+      if ($globalinfos->[0] != 2);
    $globalinfos->[1]++;
    # TODO:XXX:FIXME: Chainlength check
    #X509_STORE_CTX_set_error($x509_store_ctx, X509_V_ERR_CERT_CHAIN_TOO_LONG)
@@ -438,33 +440,41 @@ sub clone {
 
 sub get_one_start {
    my ($self, $data) = @_;
-   print "GETONESTART: NETWORK -> SSL -> POE: ".hexdump(join("", @$data))."\n" if $debug;
+   print "GETONESTART: NETWORK -> SSL -> POE: ".$self->hexdump(join("", @$data))."\n"
+      if $self->{debug};
    $self->writeToSSLBIO(join("", @$data), $self->{accepted} ? 0 : 1);
    []
 }
 
 sub get_one {
    my $self = shift;
-   print "GETONE: BEGIN\n" if $debug;
+   print "GETONE: BEGIN\n"
+      if $self->{debug};
    my @return = ();
    push(@return, $self) if ($self->doSSL() || $self->{buffer});
    my $data = Net::SSLeay::read($self->{ssl});
-   push(@return, $data) if $data;
-   print "GETONE: END: ".scalar(@return)."\n" if $debug;
+   push(@return, $data)
+      if $data;
+   print "GETONE: END: ".scalar(@return)."\n"
+      if $self->{debug};
    [@return]
 }
 
 sub get {
-   print "GET: BEGIN\n" if $debug;
    my ($self, $chunks) = @_;
+   print "GET: BEGIN\n"
+      if $self->{debug};
    my @return = ();
-   #print "GET:\n" if $debug;
+   #print "GET:\n"
+   #   if $self->{debug};
    push(@return, $self) if ($self->doSSL() || $self->{buffer});
    foreach my $data (@$chunks) {
-      print "GET: NETWORK -> SSL -> POE: ".join("", @$data)."\n" if $debug;
+      print "GET: NETWORK -> SSL -> POE: ".join("", @$data)."\n"
+         if $self->{debug};
       $self->writeToSSLBIO(join("", @$data));
       my $data = Net::SSLeay::read($self->{ssl});
-      print "GET: Read ".length($data)." bytes.\n" if $debug;
+      print "GET: Read ".length($data)." bytes.\n"
+         if $self->{debug};
       push(@return, $data);
    }
    [@return]
@@ -472,7 +482,8 @@ sub get {
 
 sub put {
    my ($self, $chunks) = @_;
-   print "PUT: BEGIN\n" if $debug;
+   print "PUT: BEGIN\n"
+      if $self->{debug};
    my @return = ();
    $self->doSSL();
    if ($self->{accepted}) {
@@ -485,14 +496,17 @@ sub put {
    }
    foreach my $data (@$chunks) {
       next if (ref($data) eq "POE::Filter::SSL");
-      print "PUT: POE -> SSL -> NETWORK: ".$data."\r\n" if $debug;
+      print "PUT: POE -> SSL -> NETWORK: ".$self->hexdump($data)."\r\n"
+         if $self->{debug};
       if ($self->{accepted}) {
          $self->writeToSSL($data);
       } else {
-         push(@{$self->{sendbuf}}, $data) if ($data);
+         push(@{$self->{sendbuf}}, $data)
+            if ($data);
       }
    }
-   push(@return, $self->{buffer}) if $self->{buffer};
+   push(@return, $self->{buffer})
+      if $self->{buffer};
    $self->{buffer} = '';
    [@return]
 }
@@ -525,7 +539,8 @@ sub get_pending {
 sub doSSL {
    my $self = shift;
    my $ret = 0;
-   print "SSLing..." if $debug;
+   print "SSLing..."
+      if $self->{debug};
    unless ($self->{accepted}) {
       my $err = $self->{client} ?
          Net::SSLeay::connect($self->{ssl}) :
@@ -575,7 +590,8 @@ sub doSSL {
    while (my $data = Net::SSLeay::BIO_read($self->{wbio})) {
       $self->{buffer} .= $data;
    }
-   print $ret."\n" if $debug;
+   print $ret."\n"
+      if $self->{debug};
    return $ret;
 }
 
@@ -611,7 +627,8 @@ sub clientCertNotOnCRL {
       my $found = 0;
       my $badcrls = 0;
       my $jump = 0;
-      print("----- SSL Infos BEGIN ---------------"."\n") if $self->{debug};
+      print("----- SSL Infos BEGIN ---------------"."\n")
+         if $self->{debug};
       foreach (@{$self->{infos}->[2]}) {
          my $crlstatus = verify_serial_against_crl_file($crlfilename, $_->[2]);
          $badcrls++ if $crlstatus;
