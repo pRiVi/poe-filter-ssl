@@ -427,8 +427,7 @@ sub VERIFY {
       push(@{$globalinfos->[2]},[Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_subject_name($x)),
                                  Net::SSLeay::X509_NAME_oneline(Net::SSLeay::X509_get_issuer_name($x)),
                                  X509_get_serialNumber($x),
-                                 Net::SSLeay::X509_STORE_CTX_get_error($x509_store_ctx),
-                                 Net::SSLeay::X509_verify_cert_error_string(Net::SSLeay::X509_STORE_CTX_get_error($x509_store_ctx))]);
+                                 $errcode]);
    }
    return 1; # $ok; # 1=accept cert, 0=reject
 }
