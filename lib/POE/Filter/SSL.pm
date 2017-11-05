@@ -256,10 +256,11 @@ sub dataToBio {
 sub new {
    my $type = shift;
 
-   $globalinfos = [0, 0, [], $self];
-
    my $params = {@_};
    my $self = bless({}, $type);
+
+   $globalinfos = [0, 0, [], $self];
+
    $self->{buffer} = '';
    $self->{debug} = $params->{debug} || 0;
    $self->{cacrl} = $params->{cacrl}
