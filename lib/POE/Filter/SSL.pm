@@ -408,13 +408,28 @@ sub new {
       die "Error setting sni:".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
          if ($err && ($err != 1));
    }
+   $self->{ignoreVerifyErrors} = $params->{ignoreVerifyErrors}
+      if ($params->{ignoreVerifyErrors} &&
+     (ref($params->{ignoreVerifyErrors}) eq "ARRAY"));
 
    $self
 }
 
 sub VERIFY {
    my ($ok, $x509_store_ctx) = @_;
-   print "VERIFY ".$ok."!\n" if $debug;
+   my $self = $globalinfos->[3] || {};
+   print "VERIFY ".$ok
+      if $self->{debug};
+   my $errcode = Net::SSLeay::X509_STORE_CTX_get_error($x509_store_ctx);
+   if ($self->{ignoreVerifyErrors} &&
+  (ref($self->{ignoreVerifyErrors}) eq "ARRAY") && (scalar(grep { $errcode == $_ }
+     @{$self->{ignoreVerifyErrors}}))) {
+      $ok = 1;
+      print " -> ".$ok." (Ignoring error ".$errcode.")"
+         if $self->{debug};
+   }
+   print "\n"
+      if $self->{debug};
    $globalinfos->[0] = $ok ? 1 : 2
       if ($globalinfos->[0] != 2);
    $globalinfos->[1]++;
@@ -430,6 +445,7 @@ sub VERIFY {
                                  X509_get_serialNumber($x),
                                  $errcode]);
    }
+   Net::SSLeay::X509_STORE_CTX_set_error($x509_store_ctx, 0);
    return 1; # $ok; # 1=accept cert, 0=reject
 }
 
@@ -1167,6 +1183,20 @@ Example:
 Let OpenSSL deny the connection if there is no client certificate.
 
 B<WARNING:> If the client is listed in the CRL file or an invalid client certifiate has been sent, the connection will be established! You have to ask I<clientCertValid()> if you have the I<crl> option set on I<new()>, otherwise to ask I<clientCertNotOnCRL()> if the certificate is listed on your CRL file!
+
+=item ignoreVerifyErrors
+
+B<WARNING:> Before using this option, you should be realy sure that you know what you are doing!
+
+Specify to ignore specific errors on verifying the certificate chain: This is for example useful to be able to fetch the time from via secure and trusted TLS connection. In this case, your time is wrong, so must ignore time errors, which are 9: X509_V_ERR_CERT_NOT_YET_VALID (certificate is not yet valid) and 10: X509_V_ERR_CERT_HAS_EXPIRED (certificate has expired).
+
+The list of errors you can ignore can be found on the documentation:
+
+L<https://wiki.openssl.org/index.php/Manual:Verify(1)>
+
+Example:
+
+  ignoreVerifyErrors => [ 9, 10, ]
 
 =back
 
