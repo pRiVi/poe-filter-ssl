@@ -396,8 +396,8 @@ sub new {
    $orfilter |=   &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
       if $params->{blockbadclientcert};
    # TODO:XXX:FIXME: Errorchecking!
+   #Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
    Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
-   Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
    print "Set verify ".($params->{blockbadclientcert} ? "FORCE" : "")." ".$orfilter."\n"
       if $self->{debug};
    if ($params->{sni}) {
