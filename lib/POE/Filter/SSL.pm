@@ -390,11 +390,13 @@ sub new {
          if $self->{debug};
       Net::SSLeay::RSA_free($rsa);
    }
-   my $orfilter = &Net::SSLeay::VERIFY_PEER;
-   $orfilter |=   &Net::SSLeay::VERIFY_CLIENT_ONCE
+   my $orfilter = 0;
+   $orfilter |= &Net::SSLeay::VERIFY_PEER |
+                &Net::SSLeay::VERIFY_CLIENT_ONCE
       if $params->{clientcert};
-   $orfilter |=   &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
-      if $params->{blockbadclientcert};
+   $orfilter |= &Net::SSLeay::VERIFY_FAIL_IF_NO_PEER_CERT
+      if $params->{clientcert} &&
+         $params->{blockbadclientcert};
    # TODO:XXX:FIXME: Errorchecking!
    #Net::SSLeay::CTX_set_verify($self->{context}, $orfilter, \&VERIFY);
    Net::SSLeay::set_verify($self->{ssl}, $orfilter, \&VERIFY);
