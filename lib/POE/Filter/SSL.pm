@@ -846,7 +846,7 @@ By default I<POE::Filter::SSL> acts as a SSL server. To use it in client mode yo
 =item Advanced Example
 
 This example is an IMAP-Relay which forwards the connections to a IMAP server
-by username. It allows one the uncrypted transfer on port 143, with the option
+by username. It allows one the unencrypted transfer on port 143, with the option
 of SSL on the established connection (STARTTLS). On port 993 it allows one to do
 direct SSL.
 
@@ -1155,7 +1155,7 @@ B<WARNING:> If the client provides an untrusted or no client certificate, the co
 
 =item sni
 
-Allows to set the SNI hostname indication in first packet of handshake. See https://de.wikipedia.org/wiki/Server_Name_Indication
+Allows one to set the SNI hostname indication in first packet of handshake. See https://de.wikipedia.org/wiki/Server_Name_Indication
 
 =item tls
 
