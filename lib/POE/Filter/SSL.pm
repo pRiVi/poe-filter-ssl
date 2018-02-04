@@ -219,7 +219,6 @@ sub PEMdataToX509 {
 }
 
 sub PEMdataToEVP_PKEY {
-   my $ssl = shift;
    my $crt = shift;
    my $bio = dataToBio($crt);
    my $evp_pkey = undef;
@@ -287,7 +286,7 @@ sub new {
    }
    if ($params->{keymem} || $params->{key}) {
       if ($params->{keymem}) {
-         $err = Net::SSLeay::CTX_use_PrivateKey($self->{context}, PEMdataToEVP_PKEY($self->{ssl}, $params->{keymem}));
+         $err = Net::SSLeay::CTX_use_PrivateKey($self->{context}, PEMdataToEVP_PKEY($params->{keymem}));
          print "Loaded keymem(".length($params->{keymem})." Bytes) with result ".$err."\n"
             if $self->{debug};
       } else {
