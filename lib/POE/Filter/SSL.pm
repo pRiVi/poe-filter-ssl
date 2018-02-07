@@ -7,18 +7,16 @@ use Scalar::Util qw(blessed);
 use Carp qw(carp confess);
 use POE;
 
-use vars qw($VERSION @ISA);
+use vars qw($VERSION);
 $VERSION = '0.40';
 sub DOSENDBACK () { 1 }
 
 our $globalinfos = {};
 
-my $PATCH         = 18;
-my $HANDSHAKE     = 19;
-my $EVENT_FLUSHED = 20;
-my $EVENT_INPUT   = 21;
-
 BEGIN {
+   our $HANDSHAKE     = 19;
+   our $EVENT_FLUSHED = 20;
+   our $EVENT_INPUT   = 21;
    eval {
       require Net::SSLeay;
       Net::SSLeay->import( 1.30 );
@@ -29,19 +27,6 @@ BEGIN {
 
    no warnings 'redefine';
    my $old_new = \&POE::Wheel::ReadWrite::new;
-   my $old_set_filter = \&POE::Wheel::ReadWrite::set_filter;
-   my $old_set_input_filter = \&POE::Wheel::ReadWrite::set_input_filter;
-   my $old_set_output_filter = \&POE::Wheel::ReadWrite::set_output_filter;
-   my $old_rw_put = \&POE::Wheel::ReadWrite::put;
-   *POE::Wheel::ReadWrite::put = sub {
-      my $self = shift;
-      my $unique_id = $self->[POE::Wheel::ReadWrite::UNIQUE_ID()];
-      if (defined($self->[$EVENT_FLUSHED])) {
-         $self->[POE::Wheel::ReadWrite::EVENT_FLUSHED] = $self->[$EVENT_FLUSHED];
-         $self->[$EVENT_FLUSHED] = undef;
-      }
-      $old_rw_put->($self, @_);
-   };
    *POE::Wheel::ReadWrite::new = sub {
       my $class = shift;
       my %arg = @_;
@@ -70,75 +55,28 @@ BEGIN {
             }
          }
       );
-      $poe_kernel->state(
-         $self->[$PATCH] = ref($self) . "($unique_id) -> ssl patch",
-         sub {
-            my $type = $_[ARG0];
-            my $self = $_[ARG1];
-            if ($_[HEAP]->{self}->{PreFilter}) {
-               $_[HEAP]->{self}->{"PreFilter".ref($self).$self->[POE::Wheel::ReadWrite::UNIQUE_ID()]} = $_[HEAP]->{self}->{PreFilter}->clone()
-                  unless ($_[HEAP]->{self}->{"PreFilter".ref($self).$self->[POE::Wheel::ReadWrite::UNIQUE_ID()]});
-               if ($type eq "input") {
-                  $old_set_input_filter->($self, POE::Filter::Stackable->new(
-                     Filters => [
-                        $_[HEAP]->{self}->{"PreFilter".ref($self).$self->[POE::Wheel::ReadWrite::UNIQUE_ID()]},
-                        $self->get_input_filter()
-                     ]
-                  ));
-               } else {
-                  $old_set_output_filter->($self, POE::Filter::Stackable->new(
-                     Filters => [
-                        $_[HEAP]->{self}->{"PreFilter".ref($self).$self->[POE::Wheel::ReadWrite::UNIQUE_ID()]},
-                        $self->get_output_filter()
-                     ]
-                  ));
-               }
-            }
-         }
-      );
-      $poe_kernel->yield(ref($self) . "($unique_id) -> ssl patch" => "input" => $self);
-      $poe_kernel->yield(ref($self) . "($unique_id) -> ssl patch" => "output" => $self);
       return $self;
+   };
+   my $old_rw_put = \&POE::Wheel::ReadWrite::put;
+   *POE::Wheel::ReadWrite::put = sub {
+      my $self = shift;
+      my $unique_id = $self->[POE::Wheel::ReadWrite::UNIQUE_ID()];
+      if (defined($self->[$EVENT_FLUSHED])) {
+         $self->[POE::Wheel::ReadWrite::EVENT_FLUSHED] = $self->[$EVENT_FLUSHED];
+         $self->[$EVENT_FLUSHED] = undef;
+      }
+      $old_rw_put->($self, @_);
    };
    my $old_destroy = \&POE::Wheel::ReadWrite::DESTROY;
    *POE::Wheel::ReadWrite::DESTROY = sub {
       my $self = shift;
-      if ($self->[$PATCH]) {
-         $poe_kernel->state($self->[$PATCH]);
-         $self->[$PATCH] = undef;
-      }
       if ($self->[$HANDSHAKE]) {
          $poe_kernel->state($self->[$HANDSHAKE]);
          $self->[$HANDSHAKE] = undef;
       }
       return $old_destroy->($self, @_);
    };
-   *POE::Wheel::ReadWrite::set_filter = sub {
-      my $self = shift;
-      my $new_filter = shift;
-      my $unique_id = $self->[POE::Wheel::ReadWrite::UNIQUE_ID()];
-      my $ret = $old_set_filter->($self, $new_filter, @_);
-      $poe_kernel->yield(ref($self) . "($unique_id) -> ssl patch" => "input" => $self);
-      $poe_kernel->yield(ref($self) . "($unique_id) -> ssl patch" => "output" => $self);
-      return $ret;
-   };
-   *POE::Wheel::ReadWrite::set_input_filter = sub {
-      my $self = shift;
-      my $new_filter = shift;
-      my $unique_id = $self->[POE::Wheel::ReadWrite::UNIQUE_ID()];
-      my $ret = $old_set_input_filter->($self, $new_filter, @_);
-      $poe_kernel->yield(ref($self) . "($unique_id) -> ssl patch" => "input" => $self);
-      return $ret;
-   };
-   *POE::Wheel::ReadWrite::set_output_filter = sub {
-      my $self = shift;
-      my $new_filter = shift;
-      my $unique_id = $self->[POE::Wheel::ReadWrite::UNIQUE_ID()];
-      my $ret = $old_set_output_filter->($self, $new_filter, @_);
-      $poe_kernel->yield(ref($self) . "($unique_id) -> ssl patch" => "output" => $self);
-      return $ret;
-   };
-   #my $old_get_one  = \&POE::Filter::Stackable::get_one;
+   my $old_get_one  = \&POE::Filter::Stackable::get_one;
    *POE::Filter::Stackable::get_one = sub {
       my ($self) = @_;
       my $return = [ ];
@@ -190,9 +128,7 @@ BEGIN {
          $old_put->($self, $data, @_);
       }
    };
-   *POE::Filter::HTTPD::get_pending = sub {
-      return undef;
-   }
+   use warnings 'redefine';
 }
 
 require XSLoader;
@@ -814,6 +750,7 @@ By default I<POE::Filter::SSL> acts as a SSL server. To use it in client mode yo
 
 =item HTTPS-Server
 
+  use POE::Filter::SSL::PreFilter
   use POE::Filter::SSL;
   use POE::Component::Server::HTTP;
   use HTTP::Status;
