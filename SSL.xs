@@ -38,7 +38,7 @@ POE_FILTER_SSL_CTX_set_tmp_rsa(ctx,rsa)
    SSL_CTX *	ctx
    RSA *	rsa
    CODE:
-      RETVAL = SSL_CTX_set_tmp_dh(ctx,rsa);
+      RETVAL = SSL_CTX_set_tmp_rsa(ctx,rsa);
    OUTPUT:
       RETVAL
 
