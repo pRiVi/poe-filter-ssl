@@ -145,9 +145,9 @@ sub checkForDoSendback {
 }
 
 sub PEMdataToX509 {
-   my $ssl = shift || die;
+   my $unblessed = shift;
    my $x509 = shift;
-   my $bio = dataToBio($ssl, $x509);
+   my $bio = dataToBio($unblessed, $x509);
    my $x509result = undef;
    die "Error using x509: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
       unless ($x509result = Net::SSLeay::PEM_read_bio_X509($bio));
@@ -156,9 +156,9 @@ sub PEMdataToX509 {
 }
 
 sub PEMdataToEVP_PKEY {
-   my $ssl = shift || die;
+   my $unblessed = shift;
    my $crt = shift;
-   my $bio = dataToBio($ssl, $crt);
+   my $bio = dataToBio($unblessed, $crt);
    my $evp_pkey = undef;
    die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
       unless ($evp_pkey = Net::SSLeay::PEM_read_bio_PrivateKey($bio));
@@ -167,21 +167,20 @@ sub PEMdataToEVP_PKEY {
 }
 
 sub CTX_add_client_CA {
-   my $ssl = shift || die;
+   my $unblessed = shift;
    my $ctx = shift;
    my $x509 = shift;
-   my $err = Net::SSLeay::X509_STORE_add_cert(Net::SSLeay::CTX_get_cert_store($ctx), PEMdataToX509($ssl, $x509));
+   my $err = Net::SSLeay::X509_STORE_add_cert(Net::SSLeay::CTX_get_cert_store($ctx), PEMdataToX509($unblessed, $x509));
    die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
       if ($err && ($err != 1));
-   $err = Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($ssl, $x509));
+   $err = Net::SSLeay::CTX_add_client_CA($ctx, PEMdataToX509($unblessed, $x509));
    die "Error using cacrt: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
       if ($err && ($err != 1));
 }
 
 sub dataToBio {
-   my $ssl = shift;
+   my $unblessed = shift;
    my $data = shift;
-   my $unblessed = $globalinfos->{int($ssl)};
    my $bio = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem());
    my $sent = Net::SSLeay::BIO_write($bio, $data);
    print "Wrote ".$sent." of ".length($data)." bytes.\n"
@@ -216,8 +215,6 @@ sub new {
    Net::SSLeay::CTX_set_options($self->{context}, 0x00400000) # SSL_OP_CIPHER_SERVER_PREFERENCE # Beim Apache: SSLHonorCipherOrder
       if ((!$self->{client}) && (!$params->{"nohonor"}));
 
-   $self->{ssl} = Net::SSLeay::new($self->{context});
-   $globalinfos->{int($self->{ssl})} = $self->{unblessed};
    my $err = undef;
    if ($params->{chain}) {
       $err = Net::SSLeay::CTX_use_certificate_chain_file($self->{context}, $params->{chain});
@@ -226,7 +223,7 @@ sub new {
    }
    if ($params->{keymem} || $params->{key}) {
       if ($params->{keymem}) {
-         $err = Net::SSLeay::CTX_use_PrivateKey($self->{context}, PEMdataToEVP_PKEY($self->{ssl}, $params->{keymem}));
+         $err = Net::SSLeay::CTX_use_PrivateKey($self->{context}, PEMdataToEVP_PKEY($self->{unblessed}, $params->{keymem}));
          print "Loaded keymem(".length($params->{keymem})." Bytes) with result ".$err."\n"
             if $self->{unblessed}->{debug};
       } else {
@@ -239,7 +236,7 @@ sub new {
    }
    if ($params->{crtmem} || $params->{crt}) {
       if ($params->{crtmem}) {
-         my $crt = PEMdataToX509($self->{ssl}, $params->{crtmem});
+         my $crt = PEMdataToX509($self->{unblessed}, $params->{crtmem});
          $err = Net::SSLeay::CTX_use_certificate($self->{context}, $crt);
          print "Loaded crtmem(".length($params->{crtmem})." Bytes/".$crt.") with result ".$err."\n"
             if $self->{unblessed}->{debug};
@@ -259,12 +256,12 @@ sub new {
       if ($params->{cacrtmem}) {
          if (ref($params->{cacrtmem}) eq "ARRAY") {
             foreach my $curcert (@{$params->{cacrtmem}}) {
-               $err = CTX_add_client_CA($self->{ssl}, $self->{context}, $curcert);
+               $err = CTX_add_client_CA($self->{unblessed}, $self->{context}, $curcert);
                last
                   unless $err;
             }
          } else {
-            $err = CTX_add_client_CA($self->{ssl}, $self->{context}, $params->{cacrtmem});
+            $err = CTX_add_client_CA($self->{unblessed}, $self->{context}, $params->{cacrtmem});
             print "Loaded cacrtmem(".length($params->{cacrtmem})." Bytes) with result ".$err."\n"
                if $self->{unblessed}->{debug};
          }
@@ -294,6 +291,8 @@ sub new {
       or die("Error creating r BIO: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error()));
    $self->{wbio} = Net::SSLeay::BIO_new(Net::SSLeay::BIO_s_mem())
       or die("Error creating w BIO: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error()));
+   $self->{ssl} = Net::SSLeay::new($self->{context});
+   $globalinfos->{int($self->{ssl})} = $self->{unblessed};
    $err = Net::SSLeay::set_bio($self->{ssl}, $self->{rbio}, $self->{wbio});
    die "Error setting r/w BIOs: ".Net::SSLeay::ERR_error_string(Net::SSLeay::ERR_get_error())
       if ($err && ($err != 1));
@@ -302,7 +301,7 @@ sub new {
        $params->{dhcertmem}) {
       my $dhbio = undef;
       if ($params->{dhcertmem}) {
-         $dhbio = dataToBio($self->{ssl}, $params->{dhcertmem});
+         $dhbio = dataToBio($self->{unblessed}, $params->{dhcertmem});
       } else {
          die "Cannot open dhcert file!"
             unless ((-s $params->{dhcert}) && ($dhbio = Net::SSLeay::BIO_new_file($params->{dhcert}, "r")));
