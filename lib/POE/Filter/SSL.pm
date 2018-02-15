@@ -8,7 +8,7 @@ use Carp qw(carp confess);
 use POE;
 
 use vars qw($VERSION);
-$VERSION = '0.40';
+$VERSION = '0.41';
 sub DOSENDBACK () { 1 }
 
 our $globalinfos = {};
@@ -640,7 +640,7 @@ POE::Filter::SSL - The easiest and flexiblest way to SSL in POE!
 
 =head1 VERSION
 
-Version 0.39
+Version 0.41
 
 =head1 DESCRIPTION
 
